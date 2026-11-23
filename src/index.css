@@ -105,6 +105,24 @@ input[type="search"]::-webkit-search-cancel-button {
   height: 100%;
 }
 
+.linkLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.linkHover {
+  position: absolute;
+  border-radius: 2px;
+  background: rgb(0 122 255 / 0.12);
+}
+
+.pdf-page.over-link .textLayer,
+.pdf-page.over-link .textLayer span {
+  cursor: pointer;
+}
+
 .pdf-page-loading {
   position: absolute;
   inset: 0;

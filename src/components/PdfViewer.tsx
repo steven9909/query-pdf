@@ -1,5 +1,5 @@
 /** Continuous, virtualized PDF page view with HiDPI canvases, selectable text layers, zoom and search highlights. */
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent } from "react";
 import type { ViewerSelection } from "../types";
 import {
   PDF_TO_CSS_UNITS,
@@ -13,7 +13,10 @@ import {
   type PageSize,
   type RenderTask,
 } from "../lib/pdf";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { linkAt, pageLinks, type LinkAnnotation, type PageLink } from "../lib/links";
 import { captureSelection } from "../lib/selection";
+import { resolveDestination } from "./Sidebar";
 import { highlightHits } from "../lib/search";
 import { clampZoom, useViewer } from "../state/viewer";
 
@@ -36,6 +39,7 @@ const PAD = 16;
 const GAP = 12;
 const RENDER_MARGIN = 2;
 const MAX_CANVAS_PIXELS = 4096 * 4096;
+const DOUBLE_CLICK_MS = 280;
 const NO_HITS: PageHits = { ranges: [], active: -1 };
 
 /** Computes on-screen boxes for every page at a CSS scale and user rotation. */
@@ -68,6 +72,17 @@ function pageAtOffset(boxes: PageBox[], y: number): number {
 function isCancel(e: unknown): boolean {
   const name = (e as { name?: string } | null)?.name;
   return name === "RenderingCancelledException" || name === "AbortException";
+}
+
+/** Opens an external link in the system browser or jumps to an internal destination. */
+function followLink(doc: PDFDocumentProxy, link: PageLink) {
+  if (link.url) {
+    openUrl(link.url).catch(() => {});
+    return;
+  }
+  resolveDestination(doc, link.dest).then((p) => {
+    if (p !== null) useViewer.getState().goToPage(p);
+  });
 }
 
 /** Renders the PDF viewer; fires onSelectionChange with text-layer selections. */
@@ -408,6 +423,11 @@ const PageView = memo(function PageView({
   const textRef = useRef<HTMLDivElement>(null);
   const [rendered, setRendered] = useState(false);
   const [textReady, setTextReady] = useState(false);
+  const [links, setLinks] = useState<PageLink[]>([]);
+  const [hoverLink, setHoverLink] = useState(-1);
+  const downRef = useRef<{ x: number; y: number } | null>(null);
+  const clickTimerRef = useRef(0);
+  useEffect(() => () => window.clearTimeout(clickTimerRef.current), []);
   const scaleRef = useRef(cssScale);
   scaleRef.current = cssScale;
   const totalRotation = (((size.rotate + rotation) % 360) + 360) % 360;
@@ -487,6 +507,25 @@ const PageView = memo(function PageView({
     };
   }, [doc, pageIndex, active, totalRotation]);
 
+  useEffect(() => {
+    setLinks([]);
+    setHoverLink(-1);
+    if (!active) return;
+    let cancelled = false;
+    doc
+      .getPage(pageIndex + 1)
+      .then(async (page) => {
+        const annotations = (await page.getAnnotations({ intent: "display" })) as LinkAnnotation[];
+        if (cancelled) return;
+        const vp = page.getViewport({ scale: 1, rotation: totalRotation });
+        setLinks(pageLinks(annotations, (r) => [...vp.convertToViewportPoint(r[0], r[1]), ...vp.convertToViewportPoint(r[2], r[3])]));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [doc, pageIndex, active, totalRotation]);
+
   const scrolledNonceRef = useRef(0);
   useEffect(() => {
     const container = textRef.current;
@@ -500,6 +539,26 @@ const PageView = memo(function PageView({
     }
   }, [doc, pageIndex, hits, hitNonce, textReady]);
 
+  const hitLink = (e: ReactMouseEvent<HTMLDivElement>) => {
+    if (links.length === 0) return -1;
+    const r = e.currentTarget.getBoundingClientRect();
+    return linkAt(links, (e.clientX - r.left) / cssScale, (e.clientY - r.top) / cssScale);
+  };
+
+  const onMouseMove = (e: ReactMouseEvent<HTMLDivElement>) => {
+    const i = e.buttons === 0 ? hitLink(e) : -1;
+    if (i !== hoverLink) setHoverLink(i);
+  };
+
+  const onClick = (e: ReactMouseEvent<HTMLDivElement>) => {
+    const down = downRef.current;
+    downRef.current = null;
+    window.clearTimeout(clickTimerRef.current);
+    if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 4 || e.detail > 1) return;
+    const i = hitLink(e);
+    if (i >= 0) clickTimerRef.current = window.setTimeout(() => followLink(doc, links[i]), DOUBLE_CLICK_MS);
+  };
+
   const style = {
     width: box.width,
     height: box.height,
@@ -508,9 +567,31 @@ const PageView = memo(function PageView({
   } as CSSProperties;
 
   return (
-    <div className="pdf-page" data-page-index={pageIndex} style={style}>
+    <div
+      className={hoverLink >= 0 ? "pdf-page over-link" : "pdf-page"}
+      data-page-index={pageIndex}
+      style={style}
+      title={links[hoverLink]?.url}
+      onMouseMove={onMouseMove}
+      onMouseLeave={() => setHoverLink(-1)}
+      onMouseDown={(e) => (downRef.current = { x: e.clientX, y: e.clientY })}
+      onClick={onClick}
+    >
       <div ref={canvasWrapRef} className="canvasWrapper" />
       <div ref={textRef} className="textLayer" />
+      {hoverLink >= 0 && links[hoverLink] && (
+        <div className="linkLayer" aria-hidden="true">
+          <div
+            className="linkHover"
+            style={{
+              left: links[hoverLink].left * cssScale,
+              top: links[hoverLink].top * cssScale,
+              width: links[hoverLink].width * cssScale,
+              height: links[hoverLink].height * cssScale,
+            }}
+          />
+        </div>
+      )}
       {!rendered && <div className="pdf-page-loading" aria-hidden="true" />}
     </div>
   );
