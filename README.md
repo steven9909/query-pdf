@@ -35,3 +35,8 @@ npm run tauri build     # make an installer
 npm test
 cd src-tauri && cargo test --lib
 ```
+
+## TODO
+
+- Support scanned PDF through OCR
+- Better/relevant context for LLM
