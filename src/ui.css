@@ -1,0 +1,44 @@
+/* Shared control styles for the explain panel and settings dialog. */
+@reference "tailwindcss";
+
+.btn {
+  @apply rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500 disabled:opacity-50;
+}
+
+.chip {
+  @apply rounded-md border border-neutral-300 px-2 py-1 text-xs hover:bg-neutral-100 disabled:opacity-40 dark:border-neutral-700 dark:hover:bg-neutral-800;
+}
+
+.icon-btn {
+  @apply flex h-7 w-7 items-center justify-center rounded-md text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900 dark:hover:bg-neutral-800 dark:hover:text-neutral-100;
+}
+
+.input {
+  @apply w-full rounded-lg border border-neutral-300 bg-white px-2.5 py-1.5 text-sm outline-none focus:border-blue-500 dark:border-neutral-700 dark:bg-neutral-950;
+}
+
+.markdown p,
+.markdown ul,
+.markdown ol {
+  @apply my-2;
+}
+
+.markdown ul {
+  @apply list-disc pl-5;
+}
+
+.markdown ol {
+  @apply list-decimal pl-5;
+}
+
+.markdown code {
+  @apply rounded bg-neutral-100 px-1 text-[0.85em] dark:bg-neutral-800;
+}
+
+.markdown strong {
+  @apply font-semibold;
+}
+
+.markdown .katex-display {
+  @apply my-2 overflow-x-auto overflow-y-hidden py-1;
+}

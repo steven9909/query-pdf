@@ -1,0 +1,207 @@
+@import "tailwindcss";
+
+:root {
+  --app-bg: #ececec;
+  --canvas-bg: #e3e3e3;
+  --toolbar-bg: #f6f6f6;
+  --sidebar-bg: #efefef;
+  --line: #d4d4d4;
+  --fg: #1d1d1f;
+  --muted: #6e6e73;
+  --accent: #0a64d8;
+  --field: #ffffff;
+  --control-hover: rgb(0 0 0 / 0.06);
+  --control-active: rgb(0 0 0 / 0.1);
+  --danger: #c4281c;
+  --page-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.12), 0 1px 4px rgb(0 0 0 / 0.14);
+  --hit-bg: rgb(255 214 0 / 0.45);
+  --hit-active-bg: rgb(255 140 0 / 0.6);
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --app-bg: #1e1e1e;
+    --canvas-bg: #282828;
+    --toolbar-bg: #2c2c2e;
+    --sidebar-bg: #242426;
+    --line: #3a3a3c;
+    --fg: #f2f2f7;
+    --muted: #98989d;
+    --accent: #3d8bfd;
+    --field: #1c1c1e;
+    --control-hover: rgb(255 255 255 / 0.08);
+    --control-active: rgb(255 255 255 / 0.14);
+    --danger: #ff6b5e;
+    --page-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.6), 0 2px 8px rgb(0 0 0 / 0.5);
+  }
+}
+
+@theme inline {
+  --color-app: var(--app-bg);
+  --color-canvas: var(--canvas-bg);
+  --color-toolbar: var(--toolbar-bg);
+  --color-sidebar: var(--sidebar-bg);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-field: var(--field);
+  --color-control-hover: var(--control-hover);
+  --color-control-active: var(--control-active);
+  --color-danger: var(--danger);
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: var(--app-bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+input,
+select,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+input[type="search"]::-webkit-search-cancel-button {
+  display: none;
+}
+
+.pdf-page {
+  --user-unit: 1;
+  --total-scale-factor: calc(var(--scale-factor) * var(--user-unit));
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+  position: relative;
+  margin: 0 auto 12px;
+  background: #fff;
+  box-shadow: var(--page-shadow);
+  direction: ltr;
+}
+
+.pdf-page .canvasWrapper {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.pdf-page .canvasWrapper canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.pdf-page-loading {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #fff 0%, #f4f4f4 50%, #fff 100%);
+  pointer-events: none;
+}
+
+.textLayer {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  text-align: initial;
+  letter-spacing: normal;
+  word-spacing: normal;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  z-index: 0;
+  color-scheme: only light;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+
+.textLayer[data-main-rotation="90"] {
+  transform: rotate(90deg) translateY(-100%);
+}
+
+.textLayer[data-main-rotation="180"] {
+  transform: rotate(180deg) translate(-100%, -100%);
+}
+
+.textLayer[data-main-rotation="270"] {
+  transform: rotate(270deg) translateX(-100%);
+}
+
+.textLayer span,
+.textLayer br {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.textLayer > :not(.markedContent):not(.endOfContent),
+.textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+.textLayer .markedContent {
+  display: contents;
+}
+
+.textLayer mark.search-hit {
+  position: static;
+  color: transparent;
+  background: var(--hit-bg);
+  border-radius: 2px;
+  margin: -1px;
+  padding: 1px;
+}
+
+.textLayer mark.search-hit.active {
+  background: var(--hit-active-bg);
+}
+
+.textLayer ::selection {
+  background: rgb(0 100 255 / 0.28);
+  color: transparent;
+}
+
+.textLayer br::selection {
+  background: transparent;
+}
+
+.textLayer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.textLayer.selecting .endOfContent {
+  top: 0;
+}
